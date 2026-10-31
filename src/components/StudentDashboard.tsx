@@ -16,6 +16,8 @@ import {
   Inbox,
   Users,
   User,
+  History,
+  ChevronRight,
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { UserProfile } from '@/lib/supabase';
@@ -37,6 +39,7 @@ interface StudentDashboardProps {
   profile: UserProfile | null;
   onBackHome: () => void;
   onStartTryout: () => void;
+  onHistory: () => void;
 }
 
 interface ChartPoint {
@@ -45,7 +48,7 @@ interface ChartPoint {
   date: number;
 }
 
-export default function StudentDashboard({ user, profile, onBackHome, onStartTryout }: StudentDashboardProps) {
+export default function StudentDashboard({ user, profile, onBackHome, onStartTryout, onHistory }: StudentDashboardProps) {
   const [results, setResults] = useState<ExamResultWithId[]>([]);
   const [grades, setGrades] = useState<GradeRow[]>([]);
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
@@ -165,6 +168,25 @@ export default function StudentDashboard({ user, profile, onBackHome, onStartTry
             <p className="text-red-700 text-sm">{error}</p>
           </div>
         )}
+
+        {/* Riwayat Tryout navigation card */}
+        <section>
+          <button
+            onClick={onHistory}
+            className="w-full bg-gradient-to-r from-blue-950 to-blue-900 hover:from-blue-900 hover:to-blue-800 text-white rounded-2xl p-5 sm:p-6 shadow-sm transition group flex items-center gap-4 text-left"
+          >
+            <div className="w-14 h-14 bg-yellow-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+              <History className="w-7 h-7 text-blue-900" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-white text-lg">Lihat Riwayat & Hasil Try Out</p>
+              <p className="text-blue-300 text-sm mt-0.5">
+                Tinjau skor, rincian jawaban, dan pembahasan dari setiap tryout yang telah kamu selesaikan.
+              </p>
+            </div>
+            <ChevronRight className="w-6 h-6 text-yellow-300 group-hover:translate-x-1 transition shrink-0" />
+          </button>
+        </section>
 
         {/* Statistic cards */}
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

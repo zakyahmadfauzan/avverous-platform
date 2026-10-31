@@ -19,7 +19,6 @@ import {
   Home as HomeIcon,
   LogIn,
   LogOut,
-  History,
   LayoutDashboard,
   Info,
   CircleUser,
@@ -31,7 +30,6 @@ import type { User } from '@supabase/supabase-js';
 interface LandingPageProps {
   onStartTryout: () => void;
   onAdmin: () => void;
-  onHistory: () => void;
   subtests: Subtest[];
   user: User | null;
   profile: UserProfile | null;
@@ -46,7 +44,7 @@ const NAV_ITEMS = [
   { label: 'Kontak', href: '#kontak' },
 ];
 
-export default function LandingPage({ onStartTryout, onAdmin, onHistory, onDashboard, isAdmin, subtests, user, profile, onLogout, onLogin }: LandingPageProps) {
+export default function LandingPage({ onStartTryout, onAdmin, onDashboard, isAdmin, subtests, user, profile, onLogout, onLogin }: LandingPageProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLoginNotice, setShowLoginNotice] = useState(false);
 
@@ -113,13 +111,6 @@ export default function LandingPage({ onStartTryout, onAdmin, onHistory, onDashb
               )}
               {user ? (
                 <>
-                  <button
-                    onClick={onHistory}
-                    className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-blue-900 border border-slate-200 hover:border-blue-200 rounded-lg transition"
-                  >
-                    <History className="w-4 h-4" />
-                    Riwayat Tryout
-                  </button>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg">
                     <div className="w-7 h-7 bg-blue-900 rounded-full flex items-center justify-center text-yellow-400 text-xs font-bold shrink-0">
                       {(profile?.full_name || user.email || '?').charAt(0).toUpperCase()}
@@ -180,16 +171,6 @@ export default function LandingPage({ onStartTryout, onAdmin, onHistory, onDashb
             <div className="pt-3 mt-3 border-t border-slate-100 flex flex-col gap-2">
               {user ? (
                 <>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onHistory();
-                    }}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg transition"
-                  >
-                    <History className="w-4 h-4" />
-                    Riwayat Tryout
-                  </button>
                   <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 rounded-lg">
                     <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center text-yellow-400 text-xs font-bold shrink-0">
                       {(profile?.full_name || user.email || '?').charAt(0).toUpperCase()}

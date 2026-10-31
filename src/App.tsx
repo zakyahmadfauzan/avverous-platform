@@ -318,6 +318,7 @@ export default function App() {
         profile={auth.profile}
         onBackHome={goHome}
         onStartTryout={handleStartTryout}
+        onHistory={() => setScreen('history')}
       />
     );
   }
@@ -331,7 +332,6 @@ export default function App() {
       <LandingPage
         onStartTryout={handleStartTryout}
         onAdmin={handleOpenAdmin}
-        onHistory={() => setScreen('history')}
         onDashboard={handleOpenDashboard}
         isAdmin={auth.isAdmin}
         subtests={packages[0]?.subtests ?? []}
@@ -382,7 +382,6 @@ export default function App() {
     <LandingPage
       onStartTryout={handleStartTryout}
       onAdmin={handleOpenAdmin}
-      onHistory={() => setScreen('history')}
       onDashboard={handleOpenDashboard}
       isAdmin={auth.isAdmin}
       subtests={packages[0]?.subtests ?? []}

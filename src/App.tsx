@@ -9,6 +9,7 @@ import AdminScreen from '@/components/AdminScreen';
 import AuthScreen from '@/components/AuthScreen';
 import HistoryScreen from '@/components/HistoryScreen';
 import StudentDashboard from '@/components/StudentDashboard';
+import BankSoalScreen from '@/components/BankSoalScreen';
 import { scoreSubtest } from '@/lib/subtestStore';
 import { loadPackages, savePackages, resetPackages } from '@/lib/packageStore';
 import { loadPracticeQuestions, savePracticeQuestions } from '@/lib/practiceStore';
@@ -327,12 +328,17 @@ export default function App() {
     return <HistoryScreen user={auth.user} profile={auth.profile} onBackHome={goHome} />;
   }
 
+  if (screen === 'bankSoal') {
+    return <BankSoalScreen practiceQuestions={practiceQuestions} onBackHome={goHome} />;
+  }
+
   if (screen === 'landing') {
     return (
       <LandingPage
         onStartTryout={handleStartTryout}
         onAdmin={handleOpenAdmin}
         onDashboard={handleOpenDashboard}
+        onBankSoal={() => setScreen('bankSoal')}
         isAdmin={auth.isAdmin}
         subtests={packages[0]?.subtests ?? []}
         user={auth.user}
@@ -383,6 +389,7 @@ export default function App() {
       onStartTryout={handleStartTryout}
       onAdmin={handleOpenAdmin}
       onDashboard={handleOpenDashboard}
+      onBankSoal={() => setScreen('bankSoal')}
       isAdmin={auth.isAdmin}
       subtests={packages[0]?.subtests ?? []}
       user={auth.user}

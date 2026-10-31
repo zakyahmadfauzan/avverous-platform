@@ -57,7 +57,7 @@ export interface SubtestResult {
   score: number;
 }
 
-export type Screen = 'landing' | 'auth' | 'packageSelection' | 'registration' | 'exam' | 'result' | 'discussion' | 'history' | 'historyDetail' | 'admin' | 'dashboard';
+export type Screen = 'landing' | 'auth' | 'packageSelection' | 'registration' | 'exam' | 'result' | 'discussion' | 'history' | 'historyDetail' | 'admin' | 'dashboard' | 'bankSoal';
 
 export interface PracticeQuestion {
   id: number;

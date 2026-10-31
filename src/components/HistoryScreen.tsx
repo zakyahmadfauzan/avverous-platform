@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, Calendar, ChevronRight, GraduationCap, Loader2, BookOpen, Clock, CheckCircle2, XCircle, Circle, Package } from 'lucide-react';
-import { supabase, UserProfile } from '@/lib/supabase';
+import { ArrowLeft, Trophy, Calendar, ChevronRight, GraduationCap, Loader2, BookOpen, Clock, CheckCircle2, XCircle, Circle, Package, FileQuestion } from 'lucide-react';
+import { supabise, UserProfile } from '@/lib/supabase';
 import { fetchMyResults, ExamResultWithId } from '@/lib/examResultsStore';
+import { fetchMyPracticeSessions, PracticeSessionSummary, isPracticeSession } from '@/lib/practiceHistoryStore';
 import type { User } from '@supabase/supabase-js';
 import { SubtestResult, Subtest, Question } from '@/types';
 import QuestionImage from '@/components/QuestionImage';
@@ -14,19 +15,26 @@ interface HistoryScreenProps {
 
 export default function HistoryScreen({ user, profile, onBackHome }: HistoryScreenProps) {
   const [results, setResults] = useState<ExamResultWithId[]>([]);
+  const [practiceSessions, setPracticeSessions] = useState<PracticeSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<ExamResultWithId | null>(null);
+  const [tab, setTab] = useState<'tryout' | 'practice'>('tryout');
+  const [selectedPractice, setSelectedPractice] = useState<PracticeSessionSummary | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const data = await fetchMyResults();
-        if (mounted) {
-          setResults(data);
-          setLoading(false);
-        }
+        const [tryoutData, practiceData] = await Promise.all([
+          fetchMyResults(),
+          fetchMyPracticeSessions().catch(() => [] as PracticeSessionSummary[]),
+        ]);
+        if (!mounted) return;
+        // exclude practice rows from tryout list
+        setResults(tryoutData.filter((r) => !isPracticeSession(r)));
+        setPracticeSessions(practiceData);
+        setLoading(false);
       } catch (e) {
         if (mounted) {
           setError('Gagal memuat riwayat. Coba lagi nanti.');
@@ -41,6 +49,10 @@ export default function HistoryScreen({ user, profile, onBackHome }: HistoryScre
 
   if (selected) {
     return <HistoryDetail record={selected} onBack={() => setSelected(null)} />;
+  }
+
+  if (selectedPractice) {
+    return <PracticeDetail record={selectedPractice} onBack={() => setSelectedPractice(null)} />;
   }
 
   return (
@@ -74,47 +86,200 @@ export default function HistoryScreen({ user, profile, onBackHome }: HistoryScre
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
             <p className="text-red-600 text-sm">{error}</p>
           </div>
-        ) : results.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trophy className="w-8 h-8 text-slate-400" />
-            </div>
-            <p className="text-slate-600 font-medium mb-1">Belum ada riwayat tryout</p>
-            <p className="text-slate-400 text-sm">Selesaikan tryout pertama kamu untuk melihat hasilnya di sini.</p>
-          </div>
         ) : (
-          <div className="space-y-3">
-            {results.map((r) => (
+          <>
+            {/* Tabs */}
+            <div className="flex gap-2 mb-5 border-b border-slate-200">
               <button
-                key={r.dbId}
-                onClick={() => setSelected(r)}
-                className="w-full bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-5 transition text-left group flex items-center gap-4"
+                onClick={() => setTab('tryout')}
+                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-1.5 ${
+                  tab === 'tryout' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
               >
-                <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
-                  {r.packageId}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm">{r.packageName}</p>
-                  <p className="text-slate-400 text-xs flex items-center gap-1.5 mt-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {new Date(r.completedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-2xl font-bold text-blue-700">{r.totalScore}</p>
-                  <p className="text-slate-400 text-xs">/ 1000</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 transition shrink-0" />
+                <Trophy className="w-4 h-4" />
+                Tryout ({results.length})
               </button>
-            ))}
-          </div>
+              <button
+                onClick={() => setTab('practice')}
+                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-1.5 ${
+                  tab === 'practice' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <FileQuestion className="w-4 h-4" />
+                Latihan Bank Soal ({practiceSessions.length})
+              </button>
+            </div>
+
+            {/* Tryout tab */}
+            {tab === 'tryout' &&
+              (results.length === 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Trophy className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <p className="text-slate-600 font-medium mb-1">Belum ada riwayat tryout</p>
+                  <p className="text-slate-400 text-sm">Selesaikan tryout pertama kamu untuk melihat hasilnya di sini.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {results.map((r) => (
+                    <button
+                      key={r.dbId}
+                      onClick={() => setSelected(r)}
+                      className="w-full bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-5 transition text-left group flex items-center gap-4"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
+                        {r.packageId}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 text-sm">{r.packageName}</p>
+                        <p className="text-slate-400 text-xs flex items-center gap-1.5 mt-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(r.completedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-2xl font-bold text-blue-700">{r.totalScore}</p>
+                        <p className="text-slate-400 text-xs">/ 1000</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 transition shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              ))}
+
+            {/* Practice tab */}
+            {tab === 'practice' &&
+              (practiceSessions.length === 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileQuestion className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <p className="text-slate-600 font-medium mb-1">Belum ada riwayat latihan Bank Soal</p>
+                  <p className="text-slate-400 text-sm">Kerjakan soal latihan dari menu Bank Soal untuk melihat riwayatnya di sini.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {practiceSessions.map((s) => {
+                    const sr = s.subtest_results?.[0];
+                    const total = sr?.total ?? 0;
+                    const correct = sr?.correct ?? 0;
+                    const wrong = sr?.wrong ?? 0;
+                    const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedPractice(s)}
+                        className="w-full bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-5 transition text-left group flex items-center gap-4"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-yellow-400 text-blue-900 flex items-center justify-center shrink-0">
+                          <FileQuestion className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-800 text-sm">{sr?.name ?? s.participant_name}</p>
+                          <p className="text-slate-400 text-xs flex items-center gap-1.5 mt-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(s.completed_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-green-600">{correct}</p>
+                          <p className="text-slate-400 text-xs">benar dari {total}</p>
+                        </div>
+                        <div className="text-right shrink-0 w-16">
+                          <p className="text-lg font-bold text-blue-700">{accuracy}%</p>
+                          <p className="text-slate-400 text-xs">akurasi</p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 transition shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-// ---- History Detail (reuses discussion-style layout) ----
+// ---- Practice Detail ----
+function PracticeDetail({ record, onBack }: { record: PracticeSessionSummary; onBack: () => void }) {
+  const sr = record.subtest_results?.[0];
+  const total = sr?.total ?? 0;
+  const correct = sr?.correct ?? 0;
+  const wrong = sr?.wrong ?? 0;
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <header className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-md sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-yellow-400 rounded-lg flex items-center justify-center">
+            <FileQuestion className="w-5 h-5 text-blue-900" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm leading-tight">Riwayat Latihan Bank Soal</p>
+            <p className="text-slate-400 text-xs">{sr?.name ?? record.participant_name}</p>
+          </div>
+        </div>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Kembali
+        </button>
+      </header>
+
+      <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-5">
+        {/* Summary */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+          <p className="text-slate-400 text-xs mb-2">
+            {new Date(record.completed_at).toLocaleString('id-ID', {
+              day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+            })}
+          </p>
+          <p className="text-slate-500 text-sm mb-3">Subtes {sr?.name ?? '-'}</p>
+          <h1 className="text-4xl font-bold text-blue-700 mb-1">
+            {accuracy}
+            <span className="text-slate-400 text-xl font-medium">% akurasi</span>
+          </h1>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-slate-800">{total}</p>
+            <p className="text-slate-500 text-xs mt-1">Total Soal</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-green-600">{correct}</p>
+            <p className="text-green-600 text-xs mt-1">Benar</p>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-red-500">{wrong}</p>
+            <p className="text-red-500 text-xs mt-1">Salah</p>
+          </div>
+        </div>
+
+        {/* Accuracy bar */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-slate-600">Akurasi Jawaban</p>
+            <p className="text-sm font-bold text-blue-700">{accuracy}%</p>
+          </div>
+          <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all"
+              style={{ width: `${accuracy}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 function HistoryDetail({ record, onBack }: { record: ExamResultWithId; onBack: () => void }) {
   const [activeSubtestIdx, setActiveSubtestIdx] = useState(0);
 

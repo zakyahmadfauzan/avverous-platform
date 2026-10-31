@@ -329,7 +329,22 @@ export default function App() {
   }
 
   if (screen === 'bankSoal') {
-    return <BankSoalScreen practiceQuestions={practiceQuestions} onBackHome={goHome} />;
+    return (
+      <BankSoalScreen
+        practiceQuestions={practiceQuestions}
+        onBackHome={goHome}
+        userId={auth.user?.id ?? null}
+        onSessionSaved={async () => {
+          if (!auth.user) return;
+          try {
+            const data = await fetchAllResults();
+            setTryoutResults(data);
+          } catch {
+            // ignore refresh failure
+          }
+        }}
+      />
+    );
   }
 
   if (screen === 'landing') {

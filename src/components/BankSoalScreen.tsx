@@ -15,13 +15,17 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
+  Loader2,
 } from 'lucide-react';
-import { PracticeQuestion } from '@/types';
+import { PracticeQuestion, Subtest, SubtestResult } from '@/types';
 import QuestionImage from '@/components/QuestionImage';
+import { insertPracticeSession } from '@/lib/practiceHistoryStore';
 
 interface BankSoalScreenProps {
   practiceQuestions: PracticeQuestion[];
   onBackHome: () => void;
+  userId: string | null;
+  onSessionSaved?: () => void | Promise<void>;
 }
 
 interface SubtestCard {
@@ -116,7 +120,7 @@ const UTBK_SUBTESTS: SubtestCard[] = [
   },
 ];
 
-export default function BankSoalScreen({ practiceQuestions, onBackHome }: BankSoalScreenProps) {
+export default function BankSoalScreen({ practiceQuestions, onBackHome, userId, onSessionSaved }: BankSoalScreenProps) {
   const [selectedSubtest, setSelectedSubtest] = useState<SubtestCard | null>(null);
 
   if (selectedSubtest) {
@@ -126,6 +130,8 @@ export default function BankSoalScreen({ practiceQuestions, onBackHome }: BankSo
         practiceQuestions={practiceQuestions}
         onBack={() => setSelectedSubtest(null)}
         onBackHome={onBackHome}
+        userId={userId}
+        onSessionSaved={onSessionSaved}
       />
     );
   }
@@ -214,21 +220,31 @@ function SubtestPracticeView({
   practiceQuestions,
   onBack,
   onBackHome,
+  userId,
+  onSessionSaved,
 }: {
   subtest: SubtestCard;
   practiceQuestions: PracticeQuestion[];
   onBack: () => void;
   onBackHome: () => void;
+  userId: string | null;
+  onSessionSaved?: () => void | Promise<void>;
 }) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [submitted, setSubmitted] = useState(false);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [finished, setFinished] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saved, setSaved] = useState(false);
 
   const q = practiceQuestions[currentIdx];
 
   const handleSubmit = () => {
-    if (!userAnswer) return;
+    if (!userAnswer || !q) return;
     setSubmitted(true);
+    setAnswers((prev) => ({ ...prev, [q.id]: userAnswer }));
   };
 
   const handleNext = () => {
@@ -236,6 +252,39 @@ function SubtestPracticeView({
       setCurrentIdx(currentIdx + 1);
       setUserAnswer('');
       setSubmitted(false);
+    } else {
+      handleFinish();
+    }
+  };
+
+  const handleFinish = async () => {
+    setFinished(true);
+    if (!userId || saved || saving) return;
+    setSaving(true);
+    setSaveError('');
+    const total = practiceQuestions.length;
+    let correct = 0;
+    let wrong = 0;
+    practiceQuestions.forEach((p) => {
+      const ans = answers[p.id];
+      if (!ans || !ans.trim()) return;
+      if (ans.trim().toLowerCase() === p.correctAnswer.trim().toLowerCase()) correct++;
+      else wrong++;
+    });
+    const subtests: Subtest[] = practiceQuestions.map((p, i) => ({
+      id: i + 1,
+      name: subtest.name,
+      durationMinutes: 0,
+      questions: [p as unknown as Subtest['questions'][number]],
+    }));
+    try {
+      await insertPracticeSession(userId, subtest.id, subtest.name, total, correct, wrong, answers, subtests);
+      setSaved(true);
+      if (onSessionSaved) await onSessionSaved();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Gagal menyimpan riwayat latihan.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -301,20 +350,75 @@ function SubtestPracticeView({
               Soal untuk subtes {subtest.name} akan muncul di sini setelah ditambahkan oleh admin.
             </p>
           </div>
-        ) : !q ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
-            </div>
-            <p className="text-slate-800 font-bold text-lg mb-1">Latihan Selesai!</p>
-            <p className="text-slate-500 text-sm mb-6">Kamu telah menyelesaikan semua soal di subtes ini.</p>
-            <button
-              onClick={onBack}
-              className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm rounded-xl transition"
-            >
-              Kembali ke Daftar Subtes
-            </button>
-          </div>
+        ) : !q || finished ? (
+          (() => {
+            if (finished) {
+              let correct = 0;
+              let wrong = 0;
+              practiceQuestions.forEach((p) => {
+                const ans = answers[p.id];
+                if (!ans || !ans.trim()) return;
+                if (ans.trim().toLowerCase() === p.correctAnswer.trim().toLowerCase()) correct++;
+                else wrong++;
+              });
+              const total = practiceQuestions.length;
+              const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+              return (
+                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-green-600" />
+                  </div>
+                  <p className="text-slate-800 font-bold text-lg mb-1">Latihan Selesai!</p>
+                  <p className="text-slate-500 text-sm mb-5">Kamu telah menyelesaikan semua soal di subtes {subtest.name}.</p>
+                  <div className="grid grid-cols-3 gap-3 max-w-md mx-auto mb-6">
+                    <div className="bg-slate-50 rounded-xl p-4">
+                      <p className="text-2xl font-bold text-slate-800">{total}</p>
+                      <p className="text-slate-500 text-xs mt-1">Total Soal</p>
+                    </div>
+                    <div className="bg-green-50 rounded-xl p-4">
+                      <p className="text-2xl font-bold text-green-600">{correct}</p>
+                      <p className="text-green-600 text-xs mt-1">Benar</p>
+                    </div>
+                    <div className="bg-red-50 rounded-xl p-4">
+                      <p className="text-2xl font-bold text-red-500">{wrong}</p>
+                      <p className="text-red-500 text-xs mt-1">Salah</p>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 max-w-md mx-auto mb-6">
+                    <p className="text-sm text-blue-700 font-semibold">Akurasi: {accuracy}%</p>
+                  </div>
+                  {saveError && (
+                    <p className="text-red-500 text-xs mb-4">{saveError}</p>
+                  )}
+                  {saved && (
+                    <p className="text-green-600 text-xs mb-4">Riwayat latihan tersimpan ke dashboard.</p>
+                  )}
+                  {saving && (
+                    <p className="text-slate-500 text-xs mb-4 flex items-center justify-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Menyimpan...
+                    </p>
+                  )}
+                  <button
+                    onClick={onBack}
+                    className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm rounded-xl transition"
+                  >
+                    Kembali ke Daftar Subtes
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileQuestion className="w-8 h-8 text-slate-400" />
+                </div>
+                <p className="text-slate-600 font-medium mb-1">Belum ada soal latihan</p>
+                <p className="text-slate-400 text-sm">
+                  Soal untuk subtes {subtest.name} akan muncul di sini setelah ditambahkan oleh admin.
+                </p>
+              </div>
+            );
+          })()
         ) : (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Question */}
@@ -452,10 +556,9 @@ function SubtestPracticeView({
                 ) : (
                   <button
                     onClick={handleNext}
-                    disabled={currentIdx >= practiceQuestions.length - 1}
-                    className="px-6 py-3 bg-blue-900 hover:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition flex items-center gap-2"
+                    className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm rounded-xl transition flex items-center gap-2"
                   >
-                    {currentIdx >= practiceQuestions.length - 1 ? 'Soal Terakhir' : 'Soal Selanjutnya'}
+                    {currentIdx >= practiceQuestions.length - 1 ? 'Selesaikan Latihan' : 'Soal Selanjutnya'}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 )}

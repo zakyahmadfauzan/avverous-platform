@@ -41,6 +41,7 @@ interface LandingPageProps {
 const NAV_ITEMS = [
   { label: 'Beranda', href: '#beranda' },
   { label: 'Modul Belajar', href: '#modul' },
+  { label: 'Tryout CBT', href: '#tryout' },
   { label: 'Kontak', href: '#kontak' },
 ];
 
@@ -94,13 +95,6 @@ export default function LandingPage({ onStartTryout, onAdmin, onDashboard, onBan
                   {item.label}
                 </a>
               ))}
-              <button
-                onClick={handleBankSoalClick}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 hover:text-blue-900 hover:bg-blue-50/50 rounded-lg transition"
-              >
-                <FileQuestion className="w-4 h-4" />
-                Bank Soal
-              </button>
             </div>
 
             {/* Right actions */}
@@ -180,13 +174,6 @@ export default function LandingPage({ onStartTryout, onAdmin, onDashboard, onBan
                 {item.label}
               </a>
             ))}
-            <button
-              onClick={handleBankSoalClick}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition w-full"
-            >
-              <FileQuestion className="w-4 h-4" />
-              Bank Soal
-            </button>
             <div className="pt-3 mt-3 border-t border-slate-100 flex flex-col gap-2">
               {user ? (
                 <>
@@ -419,7 +406,7 @@ export default function LandingPage({ onStartTryout, onAdmin, onDashboard, onBan
               title="Bank Latihan Soal"
               description="Drilling soal mandiri tanpa tekanan waktu per subtes. Latihan sepuasnya."
               actionLabel="Latihan Sekarang"
-              href="#tryout"
+              onAction={handleBankSoalClick}
             />
 
             {/* Card 4: Dashboard Siswa */}

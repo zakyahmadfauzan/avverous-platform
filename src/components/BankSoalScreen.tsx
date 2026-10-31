@@ -271,12 +271,14 @@ function SubtestPracticeView({
       if (ans.trim().toLowerCase() === p.correctAnswer.trim().toLowerCase()) correct++;
       else wrong++;
     });
-    const subtests: Subtest[] = practiceQuestions.map((p, i) => ({
-      id: i + 1,
+    const subtests: Subtest[] = [{
+      id: 1,
       name: subtest.name,
+      shortName: subtest.shortName,
+      description: subtest.description,
       durationMinutes: 0,
-      questions: [p as unknown as Subtest['questions'][number]],
-    }));
+      questions: practiceQuestions as unknown as Subtest['questions'],
+    }];
     try {
       await insertPracticeSession(userId, subtest.id, subtest.name, total, correct, wrong, answers, subtests);
       setSaved(true);

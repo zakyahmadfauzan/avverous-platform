@@ -13,6 +13,7 @@ import {
   Clock,
   MapPin,
   FileText,
+  FileQuestion,
   Inbox,
   Users,
   User,
@@ -33,6 +34,7 @@ import {
   OfflineClassRow,
   WEEKDAYS,
 } from '@/lib/dashboardStore';
+import { fetchMyPracticeSessions, isPracticeSession } from '@/lib/practiceHistoryStore';
 
 interface StudentDashboardProps {
   user: SupabaseUser;
@@ -50,6 +52,7 @@ interface ChartPoint {
 
 export default function StudentDashboard({ user, profile, onBackHome, onStartTryout, onHistory }: StudentDashboardProps) {
   const [results, setResults] = useState<ExamResultWithId[]>([]);
+  const [practiceCount, setPracticeCount] = useState(0);
   const [grades, setGrades] = useState<GradeRow[]>([]);
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
@@ -61,15 +64,18 @@ export default function StudentDashboard({ user, profile, onBackHome, onStartTry
     let mounted = true;
     (async () => {
       try {
-        const [r, g, s, m, oc] = await Promise.all([
+        const [r, g, s, m, oc, ps] = await Promise.all([
           fetchMyResults(),
           fetchMyGrades(),
           fetchUpcomingSchedules(10),
           fetchMaterials(),
           fetchOfflineClasses(),
+          fetchMyPracticeSessions().catch(() => []),
         ]);
         if (!mounted) return;
-        setResults(r);
+        const tryoutResults = r.filter((row) => !isPracticeSession(row));
+        setResults(tryoutResults);
+        setPracticeCount(ps.length);
         setGrades(g);
         setSchedules(s);
         setMaterials(m);
@@ -197,21 +203,21 @@ export default function StudentDashboard({ user, profile, onBackHome, onStartTry
             tone="blue"
           />
           <StatCard
+            icon={<FileQuestion className="w-5 h-5" />}
+            label="Latihan Bank Soal"
+            value={practiceCount.toString()}
+            tone="yellow"
+          />
+          <StatCard
             icon={<Trophy className="w-5 h-5" />}
             label="Tryout Selesai"
             value={results.length.toString()}
-            tone="yellow"
+            tone="green"
           />
           <StatCard
             icon={<TrendingUp className="w-5 h-5" />}
             label="Nilai Terakhir"
             value={chartPoints.length ? `${chartPoints[chartPoints.length - 1].score}` : '—'}
-            tone="green"
-          />
-          <StatCard
-            icon={<CalendarDays className="w-5 h-5" />}
-            label="Sesi Mendatang"
-            value={schedules.length.toString()}
             tone="purple"
           />
         </section>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Trophy, Calendar, ChevronRight, GraduationCap, Loader2, BookOpen, Clock, CheckCircle2, XCircle, Circle, Package, FileQuestion } from 'lucide-react';
-import { supabise, UserProfile } from '@/lib/supabase';
+import { UserProfile } from '@/lib/supabase';
 import { fetchMyResults, ExamResultWithId } from '@/lib/examResultsStore';
 import { fetchMyPracticeSessions, PracticeSessionSummary, isPracticeSession } from '@/lib/practiceHistoryStore';
 import type { User } from '@supabase/supabase-js';

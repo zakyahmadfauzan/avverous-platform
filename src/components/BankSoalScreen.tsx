@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   FileQuestion,
   ChevronRight,
-  ChevronDown,
   BookOpen,
   Brain,
   Globe,
@@ -13,6 +12,9 @@ import {
   Type,
   Sigma,
   Play,
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { PracticeQuestion } from '@/types';
 import QuestionImage from '@/components/QuestionImage';
@@ -116,7 +118,6 @@ const UTBK_SUBTESTS: SubtestCard[] = [
 
 export default function BankSoalScreen({ practiceQuestions, onBackHome }: BankSoalScreenProps) {
   const [selectedSubtest, setSelectedSubtest] = useState<SubtestCard | null>(null);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   if (selectedSubtest) {
     return (
@@ -207,7 +208,7 @@ export default function BankSoalScreen({ practiceQuestions, onBackHome }: BankSo
   );
 }
 
-// ---- Subtest practice view ----
+// ---- Subtest practice view (quiz flow) ----
 function SubtestPracticeView({
   subtest,
   practiceQuestions,
@@ -219,13 +220,36 @@ function SubtestPracticeView({
   onBack: () => void;
   onBackHome: () => void;
 }) {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [userAnswer, setUserAnswer] = useState<string>('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const q = practiceQuestions[currentIdx];
+
+  const handleSubmit = () => {
+    if (!userAnswer) return;
+    setSubmitted(true);
+  };
+
+  const handleNext = () => {
+    if (currentIdx < practiceQuestions.length - 1) {
+      setCurrentIdx(currentIdx + 1);
+      setUserAnswer('');
+      setSubmitted(false);
+    }
+  };
+
+  const isCorrect =
+    submitted &&
+    userAnswer.trim().toLowerCase() === q?.correctAnswer.trim().toLowerCase();
+
+  const isWrong = submitted && !isCorrect;
 
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
       <header className="bg-gradient-to-r from-blue-950 to-blue-900 text-white shadow-lg sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between gap-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onBack}
@@ -242,9 +266,7 @@ function SubtestPracticeView({
             <div className="min-w-0">
               <p className="font-semibold text-white text-base leading-tight">{subtest.name}</p>
               <p className="text-blue-300 text-xs">
-                {practiceQuestions.length > 0
-                  ? `${practiceQuestions.length} soal tersedia`
-                  : `Estimasi ${subtest.estimatedQuestions} soal`}
+                Soal {currentIdx + 1} dari {practiceQuestions.length}
               </p>
             </div>
           </div>
@@ -258,7 +280,17 @@ function SubtestPracticeView({
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Progress bar */}
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-600 rounded-full transition-all"
+            style={{ width: `${((currentIdx + 1) / practiceQuestions.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {practiceQuestions.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -269,113 +301,225 @@ function SubtestPracticeView({
               Soal untuk subtes {subtest.name} akan muncul di sini setelah ditambahkan oleh admin.
             </p>
           </div>
+        ) : !q ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+            </div>
+            <p className="text-slate-800 font-bold text-lg mb-1">Latihan Selesai!</p>
+            <p className="text-slate-500 text-sm mb-6">Kamu telah menyelesaikan semua soal di subtes ini.</p>
+            <button
+              onClick={onBack}
+              className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm rounded-xl transition"
+            >
+              Kembali ke Daftar Subtes
+            </button>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {practiceQuestions.map((q, idx) => {
-              const isOpen = expandedId === q.id;
-              return (
-                <div
-                  key={q.id}
-                  className="bg-white rounded-xl border border-slate-200 overflow-hidden transition hover:border-blue-200"
-                >
-                  <button
-                    onClick={() => setExpandedId(isOpen ? null : q.id)}
-                    className="w-full p-5 flex items-start gap-4 text-left group"
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Question */}
+            <div className="p-6 sm:p-8">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0">
+                  {currentIdx + 1}
+                </span>
+                <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                  {q.type === 'multiple_choice' ? 'Pilihan Ganda' : 'Isian Singkat'}
+                </span>
+                {submitted && (
+                  <span
+                    className={`ml-auto inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}
                   >
-                    <span className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-                          {q.type === 'multiple_choice' ? 'Pilihan Ganda' : 'Isian Singkat'}
+                    {isCorrect ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Benar
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3.5 h-3.5" /> Salah
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-slate-800 text-base font-medium leading-relaxed mb-4">{q.question}</p>
+              {q.image && <QuestionImage src={q.image} />}
+
+              {/* Multiple choice options */}
+              {q.type === 'multiple_choice' && q.options && (
+                <div className="space-y-2.5 mt-5">
+                  {q.options.map((opt, i) => {
+                    const letter = String.fromCharCode(65 + i);
+                    const isKey = letter === q.correctAnswer;
+                    const isStudent = userAnswer === letter;
+
+                    let stateClasses = 'border-slate-200 bg-white';
+                    let letterClasses = 'bg-slate-100 text-slate-600';
+
+                    if (!submitted) {
+                      if (isStudent) {
+                        stateClasses = 'border-blue-400 bg-blue-50';
+                        letterClasses = 'bg-blue-600 text-white';
+                      }
+                    } else {
+                      if (isKey) {
+                        stateClasses = 'border-green-300 bg-green-50';
+                        letterClasses = 'bg-green-600 text-white';
+                      } else if (isStudent) {
+                        stateClasses = 'border-red-300 bg-red-50';
+                        letterClasses = 'bg-red-500 text-white';
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={letter}
+                        onClick={() => !submitted && setUserAnswer(letter)}
+                        disabled={submitted}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border text-sm transition text-left ${stateClasses} ${
+                          !submitted ? 'hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer' : 'cursor-default'
+                        }`}
+                      >
+                        <span
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${letterClasses}`}
+                        >
+                          {letter}
                         </span>
+                        <span className="text-slate-700 flex-1">{opt}</span>
+                        {submitted && isKey && (
+                          <span className="text-xs text-green-600 font-medium">Kunci</span>
+                        )}
+                        {submitted && isStudent && !isKey && (
+                          <span className="text-xs text-red-500 font-medium">Jawabanmu</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Numeric input */}
+              {q.type === 'numeric' && (
+                <div className="mt-5">
+                  <input
+                    type="text"
+                    value={userAnswer}
+                    onChange={(e) => !submitted && setUserAnswer(e.target.value)}
+                    disabled={submitted}
+                    placeholder="Ketik jawabanmu di sini..."
+                    className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition ${
+                      submitted
+                        ? isCorrect
+                          ? 'border-green-300 bg-green-50 text-green-700'
+                          : 'border-red-300 bg-red-50 text-red-700'
+                        : 'border-slate-200 bg-white text-slate-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+                    }`}
+                  />
+                  {submitted && (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="bg-white border border-slate-200 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">Jawaban Kamu</p>
+                        <p
+                          className={`font-bold text-sm ${
+                            !userAnswer ? 'text-slate-400' : isCorrect ? 'text-green-600' : 'text-red-500'
+                          }`}
+                        >
+                          {userAnswer || '(kosong)'}
+                        </p>
                       </div>
-                      <p className="text-slate-800 text-sm font-medium leading-relaxed line-clamp-2">
-                        {q.question}
-                      </p>
-                    </div>
-                    <div className="shrink-0 mt-1">
-                      {isOpen ? (
-                        <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition" />
-                      )}
-                    </div>
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-4">
-                      <div>
-                        <p className="text-slate-800 text-sm leading-relaxed">{q.question}</p>
-                        {q.image && <QuestionImage src={q.image} />}
-                      </div>
-
-                      {q.type === 'multiple_choice' && q.options && (
-                        <div className="space-y-2">
-                          {q.options.map((opt, i) => {
-                            const letter = String.fromCharCode(65 + i);
-                            const isKey = letter === q.correctAnswer;
-                            return (
-                              <div
-                                key={letter}
-                                className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm ${
-                                  isKey ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-white'
-                                }`}
-                              >
-                                <span
-                                  className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs shrink-0 ${
-                                    isKey ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600'
-                                  }`}
-                                >
-                                  {letter}
-                                </span>
-                                <span className="text-slate-700">{opt}</span>
-                                {isKey && (
-                                  <span className="ml-auto text-xs text-green-600 font-medium">Kunci</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {q.type === 'numeric' && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <p className="text-xs text-green-600 mb-1">Kunci Jawaban</p>
-                          <p className="font-bold text-sm text-green-700">{q.correctAnswer}</p>
-                        </div>
-                      )}
-
-                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                        <h4 className="flex items-center gap-2 text-xs font-semibold text-blue-700 mb-2">
-                          <BookOpen className="w-3.5 h-3.5" />
-                          Pembahasan
-                        </h4>
-                        <div className="space-y-2">
-                          {q.explanation.map((step, i) => (
-                            <div key={i} className="flex gap-2">
-                              <span className="w-5 h-5 rounded-full bg-blue-200 text-blue-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                                {i + 1}
-                              </span>
-                              <div className="flex-1">
-                                <p className="text-[11px] font-semibold text-blue-600">{step.label}</p>
-                                <p className="text-xs text-slate-700 leading-relaxed">{step.content}</p>
-                                {step.formula && (
-                                  <div className="mt-1 bg-slate-100 rounded px-2 py-1 font-mono text-xs text-slate-800 overflow-x-auto">
-                                    {step.formula}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-xs text-green-600 mb-1">Kunci Jawaban</p>
+                        <p className="font-bold text-sm text-green-700">{q.correctAnswer}</p>
                       </div>
                     </div>
                   )}
                 </div>
-              );
-            })}
+              )}
+
+              {/* Submit / Next button */}
+              <div className="mt-6 flex items-center justify-end gap-3">
+                {!submitted ? (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!userAnswer}
+                    className="px-6 py-3 bg-blue-900 hover:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition flex items-center gap-2"
+                  >
+                    Cek Jawaban
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleNext}
+                    disabled={currentIdx >= practiceQuestions.length - 1}
+                    className="px-6 py-3 bg-blue-900 hover:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition flex items-center gap-2"
+                  >
+                    {currentIdx >= practiceQuestions.length - 1 ? 'Soal Terakhir' : 'Soal Selanjutnya'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Explanation — only after submit */}
+            {submitted && (
+              <div className="border-t border-slate-100 bg-slate-50 p-6 sm:p-8">
+                {/* Correct answer banner for multiple choice */}
+                {q.type === 'multiple_choice' && isWrong && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-green-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                      {q.correctAnswer}
+                    </span>
+                    <p className="text-sm text-green-700 font-medium">
+                      Kunci jawaban: {q.correctAnswer}
+                    </p>
+                  </div>
+                )}
+
+                {/* Status banner */}
+                <div
+                  className={`flex items-center gap-2 mb-4 ${
+                    isCorrect ? 'text-green-700' : 'text-red-700'
+                  }`}
+                >
+                  {isCorrect ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : (
+                    <XCircle className="w-5 h-5" />
+                  )}
+                  <p className="font-semibold text-sm">
+                    {isCorrect ? 'Jawaban benar!' : 'Jawaban kurang tepat.'}
+                  </p>
+                </div>
+
+                {/* Explanation */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-blue-700 mb-3">
+                    <BookOpen className="w-4 h-4" />
+                    Pembahasan
+                  </h4>
+                  <div className="space-y-3">
+                    {q.explanation.map((step, i) => (
+                      <div key={i} className="flex gap-2.5">
+                        <span className="w-6 h-6 rounded-full bg-blue-200 text-blue-700 text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-blue-600">{step.label}</p>
+                          <p className="text-sm text-slate-700 leading-relaxed mt-0.5">{step.content}</p>
+                          {step.formula && (
+                            <div className="mt-1.5 bg-slate-100 rounded px-2.5 py-1.5 font-mono text-xs text-slate-800 overflow-x-auto">
+                              {step.formula}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
